@@ -1,0 +1,82 @@
+#include <SPI.h>
+
+// Define DAC7811 commands
+#define CMD_WRITE 0x0000
+
+// Define button GPIO pins
+const int UPPER_BUTTON_PIN = 4;
+const int LOWER_BUTTON_PIN = 5;
+
+// Define DAC7811 input range
+const int DAC_MIN_VALUE = 0;
+const int DAC_MAX_VALUE = 4095;
+
+// Define DAC7811 reference voltage
+const float REFERENCE_VOLTAGE = 10; // Replace with the actual reference voltage of your DAC
+
+// Define initial DAC7811 value
+int dac_value = 2048;
+
+// Function to write DAC7811 value
+void write_dac(int value) {
+  int cmd_data = CMD_WRITE | value;
+  SPI.transfer((cmd_data >> 8) & 0xFF);
+  SPI.transfer(cmd_data & 0xFF);
+}
+
+// Function to calculate output voltage
+float calculate_output_voltage(int digital_input) {
+  float percentage = static_cast<float>(digital_input) / DAC_MAX_VALUE;
+  return REFERENCE_VOLTAGE * percentage;
+}
+
+// Function to increase DAC7811 value
+void increase_dac_value() {
+  if (dac_value < DAC_MAX_VALUE) {
+    dac_value++;
+    write_dac(dac_value);
+  }
+}
+
+// Function to decrease DAC7811 value
+void decrease_dac_value() {
+  if (dac_value > DAC_MIN_VALUE) {
+    dac_value--;
+    write_dac(dac_value);
+  }
+}
+
+void setup() {
+  // Initialize SPI interface
+  SPI.begin();
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+  
+  // Configure button GPIO pins as inputs with pull-ups
+  pinMode(UPPER_BUTTON_PIN, INPUT_PULLUP);
+  pinMode(LOWER_BUTTON_PIN, INPUT_PULLUP);
+  
+  // Set initial DAC7811 value
+  write_dac(dac_value);
+}
+
+void loop() {
+  // Check if upper button is pressed
+  if (!digitalRead(UPPER_BUTTON_PIN)) {
+    increase_dac_value();
+    delay(200);  // Add a small delay for button debouncing
+  }
+
+  // Check if lower button is pressed
+  if (!digitalRead(LOWER_BUTTON_PIN)) {
+    decrease_dac_value();
+    delay(200);  // Add a small delay for button debouncing
+  }
+
+  // Calculate output voltage based on current DAC value
+  float output_voltage = calculate_output_voltage(dac_value);
+  // Print the output voltage (for demonstration purposes)
+  Serial.print("Output Voltage: ");
+  Serial.println(output_voltage, 3); // Print with 3 decimal places
+
+  delay(10);  // Small delay between loop iterations
+}
